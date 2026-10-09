@@ -1,0 +1,62 @@
+{
+  "databaseId": "ai-studio-remixdirectcashp-c2fc196f-c0f0-4c42-b93d-4c9027b73923",
+  "collections": [
+    {
+      "name": "users",
+      "description": "Stores user profiles, their PIX keys, and network statistics.",
+      "securityRules": {
+        "read": "request.auth != null",
+        "create": "request.auth != null && request.auth.uid == request.resource.data.uid",
+        "update": "request.auth != null && request.auth.uid == resource.data.uid",
+        "delete": "false"
+      },
+      "fields": [
+        { "name": "uid", "type": "string", "description": "Firebase Auth UID" },
+        { "name": "name", "type": "string", "description": "User's full name" },
+        { "name": "pixKey", "type": "string", "description": "User's PIX Key" },
+        { "name": "pixType", "type": "string", "description": "Type of PIX Key (cpf, email, telefone, aleatoria)" },
+        { "name": "isActive", "type": "boolean", "description": "Whether the user has activated their account via 5 payments" },
+        { "name": "inviteCode", "type": "string", "description": "Unique invite code for the user" },
+        { "name": "sponsorCode", "type": "string", "description": "Invite code of the person who invited them", "optional": true },
+        { "name": "createdAt", "type": "timestamp", "description": "When the user joined" },
+        { "name": "totalReceived", "type": "number", "description": "Total amount received in BRL" },
+        { "name": "directReferrals", "type": "number", "description": "Number of active direct referrals" }
+      ],
+      "indexes": [
+        {
+          "fields": ["inviteCode"],
+          "unique": true
+        },
+        {
+          "fields": ["sponsorCode"]
+        }
+      ]
+    },
+    {
+      "name": "payments",
+      "description": "Stores proof of payments (simulated) for activations.",
+      "securityRules": {
+        "read": "request.auth != null && (request.auth.uid == resource.data.senderId || request.auth.uid == resource.data.receiverId)",
+        "create": "request.auth != null && request.auth.uid == request.resource.data.senderId",
+        "update": "request.auth != null && request.auth.uid == resource.data.receiverId",
+        "delete": "false"
+      },
+      "fields": [
+        { "name": "senderId", "type": "string", "description": "UID of the user sending the payment" },
+        { "name": "receiverId", "type": "string", "description": "UID of the user receiving the payment" },
+        { "name": "amount", "type": "number", "description": "Payment amount (always 10)" },
+        { "name": "level", "type": "number", "description": "Level in the hierarchy (1-5)" },
+        { "name": "status", "type": "string", "description": "Status of payment (pending, verified)" },
+        { "name": "createdAt", "type": "timestamp", "description": "When the payment was registered" }
+      ],
+      "indexes": [
+        {
+          "fields": ["senderId"]
+        },
+        {
+          "fields": ["receiverId"]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,8 @@
+{
+  "name": "Remix  Direct Cash Pix V3",
+  "description": "Protótipo funcional de um sistema de gestão de rede baseada em doações diretas via PIX.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

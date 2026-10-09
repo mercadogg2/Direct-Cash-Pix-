@@ -1,0 +1,95 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Global Safety Net (Pillar 1)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        request.auth.token.email == 'surfads01@gmail.com' ||
+        request.auth.token.email == 'directcashpix@gmail.com' ||
+        request.auth.token.email == 'jorjefurtado6@gmail.com' ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true)
+      );
+    }
+
+    match /test/connection {
+      allow read: if true;
+    }
+
+    function isReceiver() {
+      return exists(/databases/$(database)/documents/users/$(request.auth.uid)) && (
+        resource.data.receiverId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.pixKey ||
+        resource.data.receiverPixKey == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.pixKey ||
+        resource.data.receiverId == request.auth.uid
+      );
+    }
+
+    match /users/{userId} {
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      
+      // Prevent standard users from creating themselves as active or admin
+      allow create: if isSignedIn() && (
+        (request.auth.uid == userId && 
+         request.resource.data.isActive == false && 
+         (!('isAdmin' in request.resource.data) || request.resource.data.isAdmin == false)) || 
+        isAdmin()
+      );
+      
+      // Prevent standard users from modifying their active status or admin status
+      allow update: if isSignedIn() && (
+        (request.auth.uid == userId && 
+         request.resource.data.isActive == resource.data.isActive && 
+         (!('isAdmin' in request.resource.data) || request.resource.data.isAdmin == resource.data.isAdmin)) || 
+        isAdmin()
+      );
+      
+      allow delete: if isAdmin();
+    }
+
+    match /payments/{paymentId} {
+      allow get: if isSignedIn() && (
+        resource.data.senderId == request.auth.uid || 
+        isReceiver() ||
+        isAdmin()
+      );
+      
+      allow list: if isSignedIn() && (
+        resource.data.senderId == request.auth.uid || 
+        isReceiver() ||
+        isAdmin()
+      );
+      
+      // Only allow standard users to create payments with status 'pending_verification'
+      allow create: if isSignedIn() && (
+        (request.resource.data.senderId == request.auth.uid && 
+         request.resource.data.status == 'pending_verification') || 
+        isAdmin()
+      );
+      
+      // Users can update their own payments (e.g. upload new receipt), receivers can verify incoming donations, and admins have full control
+      allow update: if isSignedIn() && (
+        isAdmin() || 
+        (resource.data.senderId == request.auth.uid && 
+         request.resource.data.status == 'pending_verification' && 
+         request.resource.data.senderId == resource.data.senderId) ||
+        (isReceiver() && 
+         (request.resource.data.status == 'verified' || request.resource.data.status == 'pending_verification' || request.resource.data.status == 'pending') &&
+         request.resource.data.senderId == resource.data.senderId &&
+         request.resource.data.receiverId == resource.data.receiverId)
+      );
+      
+      allow delete: if isAdmin();
+    }
+  }
+}
